@@ -3,7 +3,7 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 
-public class BobbaTankRobot extends LinearOpMode {
+public class DrivingBobbaRobot extends LinearOpMode {
 
     private DcMotor frontRightMotorB0;
     private DcMotor frontLeftMotorB1;
@@ -19,9 +19,16 @@ public class BobbaTankRobot extends LinearOpMode {
         backLeftMotorB3 = hardwareMap.get(DcMotor.class, "bl3");
 
         // Telemetry
-        telemetry.addData("status", "Initialized");
+        telemetry.addData("Status", "Initialized");
         telemetry.update();
         waitForStart();
+
+        while (opModeIsActive()) {
+            frontRightMotorB0.setPower(-gamepad1.left_stick_y-gamepad1.right_stick_x);
+            frontLeftMotorB1.setPower(-gamepad1.left_stick_y+gamepad1.right_stick_x);
+            backRightMotorB2.setPower(-gamepad1.left_stick_y-gamepad1.right_stick_x);
+            backLeftMotorB3.setPower(-gamepad1.left_stick_y+gamepad1.right_stick_x);
+        }
     }
 
 }
