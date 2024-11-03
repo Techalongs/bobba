@@ -18,10 +18,6 @@ apply from: '../build.dependencies.gradle'
 android {
     namespace = 'org.firstinspires.ftc.teamcode'
 
-    buildFeatures {
-        buildConfig true
-    }
-
     packagingOptions {
         jniLibs.useLegacyPackaging true
     }
