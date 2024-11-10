@@ -1,10 +1,14 @@
-## TeamCode Module
+# Team Code
 
-Welcome!
+## How to Connect Wirelessly (Mac)
 
-This module, TeamCode, is the place where you will write/paste the code for your team's
-robot controller App. This module is currently empty (a clean slate) but the
-process for adding OpModes is straightforward.
+Run the following command in the terminal:
+
+```sh
+~/Library/Android/sdk/platform-tools/adb connect 192.168.43.1
+```
+
+You can also set it up as an external tool in Android Studio: (Settings | Tools | External Tools)
 
 ## Creating your own OpModes
 
