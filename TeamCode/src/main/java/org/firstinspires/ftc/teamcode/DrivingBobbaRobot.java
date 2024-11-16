@@ -70,9 +70,15 @@ public class DrivingBobbaRobot extends LinearOpMode {
             // Wheels
             this.drive(driveSpeedLimiter, gamepad1);
 
-            // Extension
-            motorExtensionLeft.setPower(-gamepad2.right_stick_y * extensionLeftUpSpeedLimiter);
-            motorExtensionRight.setPower(-gamepad2.right_stick_y * extensionLeftUpSpeedLimiter);
+            // Extensions
+            double extensionPower = -gamepad2.right_stick_y;
+            if (extensionPower > 0) {
+                motorExtensionLeft.setPower(extensionPower * extensionLeftUpSpeedLimiter);
+                motorExtensionRight.setPower(extensionPower * extensionRightUpSpeedLimiter);
+            } else {
+                motorExtensionLeft.setPower(extensionPower * extensionLeftDownSpeedLimiter);
+                motorExtensionRight.setPower(extensionPower * extensionRightDownSpeedLimiter);
+            }
 
             // Arm
             double armHingePower = -gamepad2.left_stick_y;
