@@ -14,15 +14,15 @@ public class DrivingBobbaRobot extends LinearOpMode {
     private DcMotor motorBackRightB2;
     private DcMotor motorBackLeftB3;
     private DcMotor motorArmHinge;
-    private DcMotor motorExtension;
-    private double extentsionSpeedUpLimiter = 0.5;
-    private double extentsionSpeedDownLimiter = 0.6;
+    private DcMotor motorExtensionLeft;
+    private DcMotor motorExtensionRight;
+    private double driveSpeedLimiter = 0.5;
+    private double extensionLeftUpSpeedLimiter = 0.5;
+    private double extensionLeftDownSpeedLimiter = 0.5;
+    private double extensionRightUpSpeedLimiter = extensionLeftUpSpeedLimiter;
+    private double extensionRightDownSpeedLimiter = extensionLeftDownSpeedLimiter;
     private double armHingeSpeedForwordLimiter = 0.5;
-    private double armHingeSpeedBackwardsLimiter = 0.6;
-
-    private double driveSpeed = 0.5;
-    private double limiter = 1.0;
-
+    private double armHingeSpeedBackwardsLimiter = 0.5;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -31,21 +31,25 @@ public class DrivingBobbaRobot extends LinearOpMode {
         motorFrontLeftB1 = hardwareMap.get(DcMotor.class, "fl1");
         motorBackRightB2 = hardwareMap.get(DcMotor.class, "br2");
         motorBackLeftB3 = hardwareMap.get(DcMotor.class, "bl3");
-        motorExtension = hardwareMap.get(DcMotor.class, "me");
+        motorExtensionLeft = hardwareMap.get(DcMotor.class, "mer");
+        motorExtensionRight = hardwareMap.get(DcMotor.class, "mel");
         motorArmHinge = hardwareMap.get(DcMotor.class, "mah");
 
         motorBackLeftB3.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         motorBackRightB2.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         motorFrontLeftB1.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         motorFrontRightB0.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        motorExtension.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        motorExtensionLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        motorExtensionRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         motorArmHinge.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
 
         motorBackLeftB3.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         motorBackRightB2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         motorFrontLeftB1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         motorFrontRightB0.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        motorExtension.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        motorExtensionLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        motorExtensionRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        motorArmHinge.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         motorFrontLeftB1.setDirection(DcMotorSimple.Direction.REVERSE);
         motorBackLeftB3.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -54,7 +58,8 @@ public class DrivingBobbaRobot extends LinearOpMode {
         motorFrontRightB0.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         motorBackLeftB3.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         motorBackRightB2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        motorExtension.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        motorExtensionLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        motorExtensionRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         motorArmHinge.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         // Telemetry
@@ -62,20 +67,25 @@ public class DrivingBobbaRobot extends LinearOpMode {
         waitForStart();
 
         while (opModeIsActive()) {
-            this.drive(limiter, gamepad1);
-            motorExtension.setPower(-gamepad2.right_stick_y * extentsionSpeedUpLimiter);
-            double armPower = -gamepad2.left_stick_y;
-            if (armPower > 0) motorArmHinge.setPower(armPower * armHingeSpeedForwordLimiter);
-            else motorArmHinge.setPower(armPower * armHingeSpeedBackwardsLimiter);
+            // Wheels
+            this.drive(driveSpeedLimiter, gamepad1);
 
+            // Extension
+            motorExtensionLeft.setPower(-gamepad2.right_stick_y * extensionLeftUpSpeedLimiter);
+            motorExtensionRight.setPower(-gamepad2.right_stick_y * extensionLeftUpSpeedLimiter);
+
+            // Arm
+            double armHingePower = -gamepad2.left_stick_y;
+            if (armHingePower > 0) {
+                motorArmHinge.setPower(armHingePower * armHingeSpeedForwordLimiter);
+            } else {
+                motorArmHinge.setPower(armHingePower * armHingeSpeedBackwardsLimiter);
+            }
+
+            // Display
             this.displayData();
-
         }
-    }
 
-    public void updateTelemetry(String caption, Object value) {
-        telemetry.addData(caption, value);
-        telemetry.update();
     }
 
     public void drive(double limiter, Gamepad gamepad) {
@@ -105,6 +115,11 @@ public class DrivingBobbaRobot extends LinearOpMode {
 //            telemetry.addData(caption, extraData.get(caption));
 //        }
 
+        telemetry.update();
+    }
+
+    public void updateTelemetry(String caption, Object value) {
+        telemetry.addData(caption, value);
         telemetry.update();
     }
 
