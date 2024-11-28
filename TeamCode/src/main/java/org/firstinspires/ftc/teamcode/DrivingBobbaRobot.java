@@ -6,6 +6,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 @TeleOp(name = "BobbaTotalyCode!")
 public class DrivingBobbaRobot extends LinearOpMode {
@@ -15,97 +16,108 @@ public class DrivingBobbaRobot extends LinearOpMode {
     private DcMotor motorBackRightB2;
     private DcMotor motorBackLeftB3;
     private DcMotor motorArmHinge;
-    private DcMotor motorExtension1;
-    private DcMotor motorExtension2;
+    private Extension motorExtensions;
     private Servo servoClawWristHinge;
     private Servo servoClawFinger1;
     private Servo servoClawFinger2;
 
     private double driveSpeedLimiter = 0.5;
-    private double extensionLeftUpSpeedLimiter = 0.4;
-    private double extensionLeftDownSpeedLimiter = 0.4;
-    private double extensionRightUpSpeedLimiter = extensionLeftUpSpeedLimiter;
-    private double extensionRightDownSpeedLimiter = extensionLeftDownSpeedLimiter;
+    private double extensionSpeedLimiter = 0.5;
     private double armHingeSpeedForwordLimiter = 0.5;
     private double armHingeSpeedBackwardsLimiter = 0.5;
     private double clawWristSpeedLimiter = 0.7;
     private double clawFingerspeedOpenLimiter = 0.8;
+    private double wristMinPosition = 0.0;
+    private double wristMaxPosition = 0.5;
+    private double wristTicksPerCycle = 0.01;
+    private double runtimeSeconds = 0.0;
+    private double currentBatteryVoltage = 0.0;
+    private double alertMinBatteryVoltage = 12.0;
 
     @Override
     public void runOpMode() throws InterruptedException {
         // Motors
-        motorFrontRightB0 = hardwareMap.get(DcMotor.class, "fr0");
-        motorFrontLeftB1 = hardwareMap.get(DcMotor.class, "fl1");
-        motorBackRightB2 = hardwareMap.get(DcMotor.class, "br2");
-        motorBackLeftB3 = hardwareMap.get(DcMotor.class, "bl3");
-        motorExtension1 = hardwareMap.get(DcMotor.class, "mer");
-        motorExtension2 = hardwareMap.get(DcMotor.class, "mel");
-        motorArmHinge = hardwareMap.get(DcMotor.class, "mah");
+        motorFrontRightB0 = initBasicDcMotor("fr0");
+        motorFrontLeftB1 = initBasicDcMotor("fl1");
+        motorBackRightB2 = initBasicDcMotor("br2");
+        motorBackLeftB3 = initBasicDcMotor("bl3");
+        motorFrontLeftB1.setDirection(DcMotorSimple.Direction.REVERSE);
+        motorBackLeftB3.setDirection(DcMotorSimple.Direction.REVERSE);
+
+        motorArmHinge = initBasicDcMotor("mah");
+
         servoClawWristHinge = hardwareMap.get(Servo.class, "scwh");
         servoClawFinger1 = hardwareMap.get(Servo.class,"scf1");
         servoClawFinger2 = hardwareMap.get(Servo.class,"scf2");
-
-        motorBackLeftB3.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        motorBackRightB2.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        motorFrontLeftB1.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        motorFrontRightB0.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        motorExtension1.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        motorExtension2.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        motorArmHinge.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-
-        motorBackLeftB3.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        motorBackRightB2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        motorFrontLeftB1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        motorFrontRightB0.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        motorExtension1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        motorExtension2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        motorArmHinge.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
-        motorFrontLeftB1.setDirection(DcMotorSimple.Direction.REVERSE);
-        motorBackLeftB3.setDirection(DcMotorSimple.Direction.REVERSE);
-        motorExtension1.setDirection(DcMotorSimple.Direction.REVERSE);
-        motorExtension2.setDirection(DcMotorSimple.Direction.REVERSE);
         servoClawFinger1.setDirection(Servo.Direction.REVERSE);
-
-        motorFrontLeftB1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        motorFrontRightB0.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        motorBackLeftB3.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        motorBackRightB2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        motorExtension1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        motorExtension2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        motorArmHinge.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        servoClawWristHinge.setDirection(Servo.Direction.REVERSE);
+        motorExtensions = new Extension(this,
+                initBasicDcMotor("mer"),
+                initBasicDcMotor("mel"),
+                null,
+                null
+        );
+        motorExtensions.getLeftMotor().setDirection(DcMotorSimple.Direction.REVERSE);
+        motorExtensions.getRightMotor().setDirection(DcMotorSimple.Direction.REVERSE);
+        motorExtensions.setSpeedLimiter(extensionSpeedLimiter);
+        servoClawWristHinge.setPosition(wristMaxPosition);
 
         // Telemetry
-        updateTelemetry("Status", "Initialized");
         waitForStart();
+        resetRuntime();
+        updateTelemetry("Status", "Initialized");
 
         while (opModeIsActive()) {
+            runtimeSeconds = getRuntime();
+            updateBatteryVoltage();
+
             // Wheels
             this.drive(driveSpeedLimiter, gamepad1);
 
-            // Extensions
-            double extensionPower = -gamepad2.right_stick_y;
-            if (extensionPower > 0) {
-                motorExtension1.setPower(extensionPower * extensionLeftUpSpeedLimiter);
-                motorExtension2.setPower(extensionPower * extensionRightUpSpeedLimiter);
-            } else {
-                motorExtension1.setPower(extensionPower * extensionLeftDownSpeedLimiter);
-                motorExtension2.setPower(extensionPower * extensionRightDownSpeedLimiter);
+            // Extension
+            double extensionPower = 0.0;
+            if (gamepad2.dpad_up) {
+                extensionPower = 1.0;
+            } else if (gamepad2.dpad_down) {
+                extensionPower = -1.0;
             }
+            motorExtensions.move(extensionPower);
 
-            // Arm
-            double armHingePower = -gamepad2.left_stick_y;
+            // Elbow
+            double armHingePower = -gamepad2.right_stick_y;
             if (armHingePower > 0) {
                 motorArmHinge.setPower(armHingePower * armHingeSpeedForwordLimiter);
             } else {
                 motorArmHinge.setPower(armHingePower * armHingeSpeedBackwardsLimiter);
             }
 
+            // Wrist
+            double wristPositionControl = gamepad2.left_stick_y;
+            double wristGetPosition = servoClawWristHinge.getPosition();
+            if (wristPositionControl > 0.0){
+                double wristNewPosition = (wristTicksPerCycle * wristPositionControl) + wristGetPosition;
+                if (wristNewPosition > wristMaxPosition) {
+                    wristNewPosition = wristMaxPosition;
+                }
+                servoClawWristHinge.setPosition(wristNewPosition);
+            } else if (wristPositionControl < 0) {
+                double wristNewPosition = (wristTicksPerCycle * wristPositionControl) + wristGetPosition;
+                if (wristNewPosition < wristMinPosition) {
+                    wristNewPosition = wristMinPosition;
+                }
+                servoClawWristHinge.setPosition(wristNewPosition);
+            }
+
+            // Claw
             double clawButtonRT = gamepad2.right_trigger;
             if (clawButtonRT > 0) {
                 closeClaws();
             }
 
+            double clawLeftTrigger = gamepad2.left_trigger;
+            if (clawLeftTrigger > 0) {
+                openClaws();
+            }
 
             // Display
             this.displayData();
@@ -120,6 +132,7 @@ public class DrivingBobbaRobot extends LinearOpMode {
         servoClawFinger1.setPosition(0);
         servoClawFinger2.setPosition(0);
     }
+
     public void clawHingeUp() {
         servoClawWristHinge.setPosition(0);
     }
@@ -127,6 +140,7 @@ public class DrivingBobbaRobot extends LinearOpMode {
     public void clawHingeDown() {
         servoClawWristHinge.setPosition(1);
     }
+
     public void drive(double limiter, Gamepad gamepad) {
         float flPower = (-gamepad.left_stick_y + gamepad.right_stick_x) + gamepad.left_stick_x;
         float frPower = (-gamepad.left_stick_y - gamepad.right_stick_x) - gamepad.left_stick_x;
@@ -139,11 +153,34 @@ public class DrivingBobbaRobot extends LinearOpMode {
         motorBackRightB2.setPower(brPower * limiter);
     }
 
+    public double getBatteryVoltage() {
+        double result = Double.POSITIVE_INFINITY;
+        for (VoltageSensor sensor : hardwareMap.voltageSensor) {
+            double voltage = sensor.getVoltage();
+            if (voltage > 0) {
+                result = Math.min(result, voltage);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Update battery voltage every 60 seconds.
+     */
+    private double updateBatteryVoltage() {
+        if (runtimeSeconds % 60 == 0) {
+            currentBatteryVoltage = getBatteryVoltage();
+        }
+        return currentBatteryVoltage;
+    }
+
     public void displayData() {
         telemetry.addData("Status", "Running");
-        telemetry.addData("Right Trigger", gamepad2.right_trigger);
-        telemetry.addData("claw get position", servoClawFinger1.getPosition());
-        telemetry.addData("claw get position2", servoClawFinger2.getPosition());
+        telemetry.addData("Voltage", "%.2f", currentBatteryVoltage);
+        if (currentBatteryVoltage < alertMinBatteryVoltage) {
+            telemetry.addData("VOLTAGE ALERT", "VOLTAGE ALERT");
+        }
+        telemetry.addData("Extension Position", motorExtensions.getCurrentPosition());
 
         telemetry.addData("Front Left Power", motorFrontLeftB1.getPower());
         telemetry.addData("Front Right Power", motorFrontRightB0.getPower());
@@ -165,6 +202,14 @@ public class DrivingBobbaRobot extends LinearOpMode {
     public void updateTelemetry(String caption, Object value) {
         telemetry.addData(caption, value);
         telemetry.update();
+    }
+
+    public DcMotor initBasicDcMotor(String name) {
+        DcMotor motor = hardwareMap.get(DcMotor.class, name);
+        motor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        motor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        return motor;
     }
 
 }
