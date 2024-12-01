@@ -1,24 +1,21 @@
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.TouchSensor;
 
-import java.util.function.Supplier;
-
 public class Extension {
 
-    private final OpMode opMode;
     private final DcMotor leftMotor;
     private final DcMotor rightMotor;
     private final TouchSensor topLimitSensor;
     private final TouchSensor bottomLimitSensor;
-    private double upSpeedLimiter = 1.0;
-    private double downSpeedLimiter = 1.0;
+    private double upSpeedLimiter = 0.5;
+    private double downSpeedLimiter = 0.5;
     private DcMotor.RunMode currentRunMode;
+    private double holdPower = 0.75;
+    private int holdTargetPosition;
 
-    public Extension(OpMode opMode, DcMotor leftMotor, DcMotor rightMotor, TouchSensor topLimitSensor, TouchSensor bottomLimitSensor) {
-        this.opMode = opMode;
+    public Extension(DcMotor leftMotor, DcMotor rightMotor, TouchSensor topLimitSensor, TouchSensor bottomLimitSensor) {
         this.leftMotor = leftMotor;
         this.rightMotor = rightMotor;
         this.topLimitSensor = topLimitSensor;
@@ -37,16 +34,15 @@ public class Extension {
         if (power < 0.0 && !atBottomLimit()) {
             adjustedPower = power * downSpeedLimiter;
             setRunMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            holdTargetPosition = getCurrentPosition();
         } else if (power > 0.0 && !atTopLimit()) {
             adjustedPower = power * upSpeedLimiter;
             setRunMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            holdTargetPosition = getCurrentPosition();
         } else {
-            int leftPosition = leftMotor.getCurrentPosition();
-            int rightPosition = rightMotor.getCurrentPosition();
-            leftMotor.setTargetPosition(leftPosition);
-            rightMotor.setTargetPosition(rightPosition);
+            setTargetPosition(holdTargetPosition);
             setRunMode(DcMotor.RunMode.RUN_TO_POSITION);
-            adjustedPower = 0.5;
+            adjustedPower = holdPower;
         }
         leftMotor.setPower(adjustedPower);
         rightMotor.setPower(adjustedPower);
