@@ -1,27 +1,22 @@
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.hardware.TouchSensor;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
-@TeleOp(name = "BobbaTotalyCode! (Use)")
-public class DrivingBobbaRobot extends LinearOpMode {
+@TeleOp(name = "Bobba Driving (Do Not Use)")
+public class BobbaDriving extends LinearOpMode {
 
     private IMU imu;
-    private DcMotor motorFrontRightB0;
-    private DcMotor motorFrontLeftB1;
-    private DcMotor motorBackRightB2;
-    private DcMotor motorBackLeftB3;
+    private TotallyRobot robot;
+    private Gamepad driverGamepad;
+    private Gamepad operatorGamepad;
 
     private Elbow elbow;
     private Extension motorExtensions;
@@ -36,9 +31,6 @@ public class DrivingBobbaRobot extends LinearOpMode {
     private double armHingeSpeedBackwardsLimiter = 0.5;
     private double clawWristSpeedLimiter = 0.7;
     private double clawFingerSpeedOpenLimiter = 0.8;
-    private double runtimeSeconds = 0.0;
-    private double currentBatteryVoltage = 0.0;
-    private double alertMinBatteryVoltage = 12.0;
 
     // Wrist variables for testing out wrist stuff
     private double wristMinPosition = 0.0;
@@ -49,53 +41,14 @@ public class DrivingBobbaRobot extends LinearOpMode {
     @Override
     public void runOpMode() throws InterruptedException {
 
-        imu = hardwareMap.get(IMU.class, "imu");
-        IMU.Parameters parameters = new IMU.Parameters(new RevHubOrientationOnRobot(
-                RevHubOrientationOnRobot.LogoFacingDirection.UP,
-                RevHubOrientationOnRobot.UsbFacingDirection.BACKWARD
-        ));
-        imu.initialize(parameters);
+        TotallyRobot robot = new TotallyRobot();
+        updateTelemetry("Status", "Initializing");
+        robot.settingBotUp(this);
 
-        // Wheels
-        motorFrontRightB0 = initBasicDcMotor("fr0");
-        motorFrontLeftB1 = initBasicDcMotor("fl1");
-        motorBackRightB2 = initBasicDcMotor("br2");
-        motorBackLeftB3 = initBasicDcMotor("bl3");
-        motorFrontLeftB1.setDirection(DcMotorSimple.Direction.REVERSE);
-        motorBackLeftB3.setDirection(DcMotorSimple.Direction.REVERSE);
-
-        // Elbow
-        elbow = new Elbow(this, (DcMotorEx) initBasicDcMotor("mah"));
-
-        // Wrist
-        servoClawWristHinge = hardwareMap.get(Servo.class, "scwh");
-        servoClawWristHinge.setDirection(Servo.Direction.REVERSE);
-
-        // Claw
-        servoClawFinger1 = hardwareMap.get(Servo.class,"scf1");
-        servoClawFinger2 = hardwareMap.get(Servo.class,"scf2");
-        servoClawFinger1.setDirection(Servo.Direction.REVERSE);
-
-        // TODO: This doesn't seem to be working
-        TouchSensor sensorExtensionBottom = hardwareMap.get(TouchSensor.class, "sebl");
-//        sensorArmHingeTop = hardwareMap.get(TouchSensor.class, "saht");
-        motorExtensions = new Extension(
-                initBasicDcMotor("mel"),
-                initBasicDcMotor("mer"),
-                null,
-                sensorExtensionBottom
-        );
-        motorExtensions.getLeftMotor().setDirection(DcMotorSimple.Direction.REVERSE);
-        motorExtensions.getRightMotor().setDirection(DcMotorSimple.Direction.REVERSE);
-        motorExtensions.setSpeedLimiter(extensionSpeedLimiter);
-        motorExtensions.setRunMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        servoClawWristHinge.setPosition(wristMaxPosition);
-
-        // Starting
+        updateTelemetry("Status", "Waiting for Start");
         waitForStart();
-        updateBatteryVoltage();
-        updateTelemetry("Status", "Initialized");
         resetRuntime();
+        updateTelemetry("Status", "Started");
 
         while (opModeIsActive()) {
 
@@ -110,15 +63,12 @@ public class DrivingBobbaRobot extends LinearOpMode {
                 imu.resetYaw();
             }
 
-            runtimeSeconds = getRuntime();
-            updateBatteryVoltage();
-
             // Driving
             if (useFieldCentricDriving) {
                 double botHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
-                this.driveFieldCentric(driveSpeedLimiter, gamepad1, botHeading);
+                robot.driveFieldCentric(gamepad1, botHeading);
             } else {
-                this.driveRobotCentric(driveSpeedLimiter, gamepad1);
+                robot.driveRobotCentric(gamepad1);
             }
 
             // Elbow
@@ -178,63 +128,8 @@ public class DrivingBobbaRobot extends LinearOpMode {
         servoClawWristHinge.setPosition(1);
     }
 
-    public void driveRobotCentric(double limiter, Gamepad gamepad) {
-        float flPower = (-gamepad.left_stick_y + gamepad.right_stick_x) + gamepad.left_stick_x;
-        float frPower = (-gamepad.left_stick_y - gamepad.right_stick_x) - gamepad.left_stick_x;
-        float blPower = (-gamepad.left_stick_y + gamepad.right_stick_x) - gamepad.left_stick_x;
-        float brPower = (-gamepad.left_stick_y - gamepad.right_stick_x) + gamepad.left_stick_x;
-        motorFrontLeftB1.setPower(flPower * limiter);
-        motorFrontRightB0.setPower(frPower * limiter);
-        motorBackLeftB3.setPower(blPower * limiter);
-        motorBackRightB2.setPower(brPower * limiter);
-    }
-
-    public void driveFieldCentric(double limiter, Gamepad gamepad, double botHeading) {
-        double y = -gamepad.left_stick_y;
-        double x = gamepad.left_stick_x;
-        double rx = gamepad.right_stick_x;
-
-        double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
-        double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
-        rotX = rotX * 1.1;
-        double denominator = Math.max(Math.abs(rotY) + Math.abs(rotX) + Math.abs(rx), 1);
-        double flPower = (rotY + rotX + rx) / denominator;
-        double blPower = (rotY - rotX + rx) / denominator;
-        double frPower = (rotY - rotX - rx) / denominator;
-        double brPower = (rotY + rotX - rx) / denominator;
-
-        motorFrontLeftB1.setPower(flPower);
-        motorFrontRightB0.setPower(frPower);
-        motorBackLeftB3.setPower(blPower);
-        motorBackRightB2.setPower(brPower);
-    }
-
-    public double getBatteryVoltage() {
-        double result = Double.POSITIVE_INFINITY;
-        for (VoltageSensor sensor : hardwareMap.voltageSensor) {
-            double voltage = sensor.getVoltage();
-            if (voltage > 0) {
-                result = Math.min(result, voltage);
-            }
-        }
-        return result;
-    }
-
-    /**
-     * Update battery voltage every 60 seconds.
-     */
-    private void updateBatteryVoltage() {
-        if (runtimeSeconds % 60 == 0) {
-            currentBatteryVoltage = getBatteryVoltage();
-        }
-    }
-
     public void displayData() {
         telemetry.addData("Status", "Running");
-        if (currentBatteryVoltage < alertMinBatteryVoltage) {
-            telemetry.addData("Voltage", "%.2f", currentBatteryVoltage);
-            telemetry.addData("VOLTAGE ALERT", "VOLTAGE ALERT");
-        }
 //        telemetry.addData("F1 Pos", servoClawFinger1.getPosition());
 //        telemetry.addData("F2 Pos", servoClawFinger2.getPosition());
         telemetry.addData("Ext Status", motorExtensions.getStatus());
