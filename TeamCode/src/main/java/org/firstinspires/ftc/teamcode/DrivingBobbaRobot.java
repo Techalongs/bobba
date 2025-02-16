@@ -14,7 +14,7 @@ import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
-@TeleOp(name = "BobbaTotalyCode! (Use)")
+@TeleOp(name = "BobbaTotallyCode! (Use)")
 public class DrivingBobbaRobot extends LinearOpMode {
 
     private IMU imu;
